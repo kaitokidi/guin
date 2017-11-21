@@ -142,10 +142,11 @@ void Moon::update(float dt, sf::RenderTarget& window) {
         if(speed.y < 0) speed.y = std::min(0.f, speed.y + MOVEMENTSPEED*dt);
     }
 
-    if(speed.x > 10) speed.x = 10;
-    if(speed.y > 10) speed.y = 10;
-    if(speed.x < -10) speed.x = -10;
-    if(speed.y < -10) speed.y = -10;
+    const int MAX_SPEED = 5;
+    if(speed.x > MAX_SPEED) speed.x = MAX_SPEED;
+    if(speed.y > MAX_SPEED) speed.y = MAX_SPEED;
+    if(speed.x < -MAX_SPEED) speed.x = -MAX_SPEED;
+    if(speed.y < -MAX_SPEED) speed.y = -MAX_SPEED;
     move(speed);
     glowing.setOrigin(glowing.getLocalBounds().width/2 + speed.x, glowing.getLocalBounds().height/2+ speed.y);
 
@@ -158,8 +159,13 @@ void Moon::update(float dt, sf::RenderTarget& window) {
     float scale = glowing.getScale().x + std::abs((std::sin(m_timer/3)))/10;
     glowing.setScale(scale,scale);
 
-    std::cout << "mmmmm... "<< m_timer <<" * "<<((std::abs(speed.x)+std::abs(speed.y))/2) << std::endl;
-    smoon.setRotation(8*std::sin(m_timer* ((std::abs(speed.x)+std::abs(speed.y))/2)  ));
+    static float angle = 0;
+//    float speedFactor = (std::abs(speed.x)+std::abs(speed.y)/2);
+    float speedFactor2 = std::max(std::abs(speed.x),std::abs(speed.y));
+    smoon.setRotation(8*(speedFactor2/MAX_SPEED) *std::sin(angle) );
+    angle += dt*speedFactor2;
+
+    if(angle >= 2*3.1415) angle = 0;
 }
 
 void Moon::render(sf::RenderTarget &target)
