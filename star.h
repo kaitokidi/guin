@@ -20,6 +20,7 @@ public:
 
     TextBox textBox;
     sf::Sprite sglow;
+    float movementAngle;
 
     void setCanSpeak(bool value);
     bool getCanSpeak() const;

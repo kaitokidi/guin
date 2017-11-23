@@ -17,6 +17,7 @@ float msin(float x){return mcos(x-1.570796326794);}
 Star::Star(sf::Font& f, float timeToStart)
     :textBox("", f)
 {
+    movementAngle = 0;
     m_timer = 0;
     m_gtimer = rand()%360;
     m_timeToStart = timeToStart;
@@ -55,7 +56,7 @@ void Star::update(float dt) {
     }
 
 
-    sglow.setTexture(tglow, true);
+    //sglow.setTexture(tglow, true);
     sglow.setOrigin(sglow.getLocalBounds().width/2, sglow.getLocalBounds().height/2);
     sglow.setScale(getLocalBounds().width*2/sglow.getLocalBounds().width,
                      getLocalBounds().height*2/sglow.getLocalBounds().height );
@@ -66,7 +67,7 @@ void Star::update(float dt) {
 }
 
 void Star::render(sf::RenderTarget &target){
-    target.draw(sglow);
+   // target.draw(sglow);
     setTexture(texture);
     target.draw(*this);
     textBox.setPosition(sf::Vector2f(getPosition().x - textBox.getGlobalBounds().width/2, getPosition().y -80));

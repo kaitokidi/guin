@@ -17,6 +17,14 @@ float getAngle(sf::Vector2f &orig, sf::Vector2i &des) {
     return std::atan2(des.y - orig.y, des.x - orig.x)*180/(M_PI);
 }
 
+float getModule(const sf::Vector2f &orig, const sf::Vector2f &des) {
+    return std::sqrt(std::pow(std::abs(des.x-orig.x), 2) + std::pow(std::abs(des.y-orig.y), 2));
+}
+
+int randomSignOne(){
+    return 1 - 2*std::rand()%2;
+}
+
 namespace State{
 enum state {
   Idle, Speaking, Searching, GroupChat, fadeOut
@@ -88,8 +96,8 @@ int main(){
     };
 
     moonSentences.push_back("Sols veig la mort si no trobo \n un refugi de la tempesta...");
-    //moonSentences.push_back("Segueix-me! no tenim gaire temps!");
- /*   moonSentences.push_back("Has to be so nice to be loved...");
+    moonSentences.push_back("Segueix-me! no tenim gaire temps!");
+    moonSentences.push_back("Has to be so nice to be loved...");
     moonSentences.push_back("Veniu amb nosaltres! \n (Tot i que no estic segur de si ho aconseguirem");
     moonSentences.push_back("Seguim buscant tots junts \n (El grup confia en mi...)");
     moonSentences.push_back("No et rendeixis! Trobarem algun lloc! \n (O morirem congelats...)");
@@ -99,14 +107,15 @@ int main(){
     moonSentences.push_back("Gel fred i cruel...");
     moonSentences.push_back("Fa tant de fred quee no em puc ni moure...");
     moonSentences.push_back("Perdoneu companys que us he fallat...");
-    moonSentences.push_back("Deixeu al menys que us abraçi i morirem junts...");*/
-//    moonSentences.push_back("Game made with love  \n by Genis Bayona \n at Oxfordhacks 2016");
+    moonSentences.push_back("Deixeu al menys que us abraçi i morirem junts...");
+//    moonSentences.push_back("Game made with love  \n by Genis Bayona");
   //  moonSentences.push_back("Music: Sad Day from \n Royalty Free Music \n Bensound. ");
 
     Moon moon("Ice Storm in Anctartica \n                          ", font);
     moon.setOrigin(moon.getLocalBounds().width/2, moon.getLocalBounds().height/2);
 
     std::vector < Star > stars;
+    std::vector < Star > penguinsToFollow;
 
     State::state currentState = State::Idle;
 
@@ -199,15 +208,23 @@ sf::Vector2f groupPosition;
 
 
                     for(auto &pair: group){
-                        stars.emplace_back(Star(font, pair.first));
+                        stars.emplace_back(font, pair.first);
                         stars[stars.size()-1].setPosition(groupPosition+sf::Vector2f((20 + std::rand()%150) * sign3,
                                                                                      (20 + std::rand()%150) * sign4));
+                        for(int i = 0; i < stars.size()-1; ++i){
+                            Star* currentStarAdded = &stars.back();
+
+                            if(currentStarAdded->getGlobalBounds().intersects(stars[i].getGlobalBounds())){
+                                currentStarAdded->move(sf::Vector2f(stars[i].getGlobalBounds().width*randomSignOne(), stars[i].getGlobalBounds().height*randomSignOne()));
+                            }
+                        }
+
                         stars[stars.size()-1].setSentence(pair.second);
                     }
                 }
                 else {
                     int size = 20;
-                    stars.emplace_back(Star(font, 2));
+                    stars.emplace_back(font, 2);
                     stars[stars.size()-1].setPosition(sf::Vector2f(0.0,0.0));
                     stars[stars.size()-1].setSentence(": )");
 
@@ -281,13 +298,19 @@ sf::Vector2f groupPosition;
         }
         case State::fadeOut:
             if(fadeOutValue <= 1){
-                fadeOutValue += deltatime* 0.5;
-                for(Star &s : stars){
+                fadeOutValue += deltatime* 0.5*2;
+                /*for(Star &s : stars){
                     s.setColor(sf::Color(255,255,255, 255-255*fadeOutValue));
                     s.sglow.setColor(sf::Color(255,255,255, 255-255*fadeOutValue));
-                }
+                }*/
             }
             else {
+                for(Star &s : stars){
+                    penguinsToFollow.emplace_back(font,1000);
+                    penguinsToFollow[penguinsToFollow.size()-1].setPosition(s.getPosition());
+                    penguinsToFollow[penguinsToFollow.size()-1].setRotation(s.getRotation());
+                    penguinsToFollow[penguinsToFollow.size()-1].setScale(s.getScale());
+                }
                 stars.clear();
                 currentState = State::Idle;
             }
@@ -297,7 +320,46 @@ sf::Vector2f groupPosition;
         }
 
         moon.update(deltatime, window);
-		//Set view values
+
+
+        //followers
+        sf::Vector2f destinationPoint = moon.getPosition();
+        float m_speed = 40;
+        for(Star& s : penguinsToFollow) {
+
+            sf::Vector2f originalPosition = s.getPosition();
+            float module = getModule(originalPosition,destinationPoint);
+            float directionX = destinationPoint.x - originalPosition.x;
+            float directionY = destinationPoint.y - originalPosition.y;
+            sf::Vector2f movement = sf::Vector2f(directionX/module*m_speed*deltatime,directionY/module*m_speed*deltatime);
+            s.move(movement);
+            bool tooCloseToPlayer = false;
+            if(getModule(s.getPosition(),destinationPoint) <
+                    getModule(s.getPosition(), originalPosition)){
+                s.move(sf::Vector2f(movement.x*-1,movement.y*-1));
+                tooCloseToPlayer = true;
+            }
+
+            sf::FloatRect intersectionOfPenguins;
+            if(!tooCloseToPlayer){
+                for(Star& ss : penguinsToFollow) {
+                    if(&s != &ss && s.getGlobalBounds().intersects(ss.getGlobalBounds(),intersectionOfPenguins)){
+                        s.move(sf::Vector2f(
+                                   movement.x-(intersectionOfPenguins.width < intersectionOfPenguins.height? intersectionOfPenguins.width:0),
+                                   movement.y-(intersectionOfPenguins.width < intersectionOfPenguins.height? 0: intersectionOfPenguins.height)));
+                    }
+                }
+            }
+
+            float speedFactor2 = m_speed;
+            s.setRotation(8*(speedFactor2/m_speed) *std::sin(s.movementAngle) );
+            s.movementAngle += deltatime*speedFactor2/6;
+
+            if(s.movementAngle >= 2*3.1415) s.movementAngle = 0;
+        }
+
+
+        //Set view values
         sf::Vector2f viewPosition = view.getCenter();
 
         view.reset(sf::FloatRect(viewPosition.x, viewPosition.y,
@@ -332,12 +394,12 @@ sf::Vector2f groupPosition;
 		//Set window view, draw and display
         window.setView(view);
 
-        sf::Color c = sf::Color(255,255,255,255);
+        sf::Color c = sf::Color(200,200,200,255);
 
         if(moonSentenceIndex >= moonSentences.size()) {
             if(moonSentenceIndex == moonSentences.size()) {
                 ++moonSentenceIndex;
-                alpha = 0;
+                alpha = 55;
             }
             alpha+=deltatime*10;
             c = sf::Color(std::max(0,255-int(alpha)),std::max(0,255-int(alpha)),std::max(0,255-int(alpha)),std::max(0,255-int(alpha)));
@@ -360,9 +422,9 @@ sf::Vector2f groupPosition;
                 pos.x -= window.getSize().x/2;
                 pos.y = rand()%window.getSize().y;
                 pos.y -= window.getSize().y/2;
-                sf::CircleShape c(1,4);
+                sf::CircleShape c(2,4);
                 c.setPosition(moon.getPosition() + pos);
-                c.setFillColor(sf::Color(250,250,250,100));
+                c.setFillColor(sf::Color(0,0,0,250));
                 ministars.push_back(c);
             }
         }
@@ -401,6 +463,11 @@ sf::Vector2f groupPosition;
             s.render(window);
             //window.draw(s);
         }
+
+        for(Star& s : penguinsToFollow) {
+            s.render(window);
+        }
+
         moon.render(window);
 
         if(alpha >= 255){
