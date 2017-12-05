@@ -7,6 +7,7 @@
 #include <time.h>       /* time */
 #include <stdio.h>
 #include "moon.h"
+#include "snowSystem.h"
 #include "star.h"
 
 bool isWhite(sf::Image& image, float px, float py){
@@ -67,8 +68,24 @@ int main(){
     std::vector< std::vector <std::pair <float, std::string > > > groups =
     {
         {
-            std::pair <float, std::string >(0, "Hi, been a long time!"),
-            std::pair <float, std::string >(5, "I've missed you so much!")
+            std::pair <float, std::string >(0, "Del salon en el angulo oscuro"),
+            std::pair <float, std::string >(1, "de su dueña tal vez olvidada,"),
+            std::pair <float, std::string >(2, "silenciosa y cubierat de polvo"),
+            std::pair <float, std::string >(3, "veíase el arpa."),
+        }
+        ,
+        {
+            std::pair <float, std::string >(0, "cuanta not adormia en sus cuerdas,"),
+            std::pair <float, std::string >(1, "como el pajaro duerme en las ramas,"),
+            std::pair <float, std::string >(2, "esperando la mano de nieve"),
+            std::pair <float, std::string >(3, "que sabe arrancarlas!"),
+        }
+        ,
+        {
+            std::pair <float, std::string >(0, "Ay! pense, cuantas veces el genio"),
+            std::pair <float, std::string >(1, "asi duerme en el fondo del alma,"),
+            std::pair <float, std::string >(2, "y una voz, como lazaro espera"),
+            std::pair <float, std::string >(3, "que le diga: Levantate y anda!"),
         }
         ,
     /*    {
@@ -95,12 +112,12 @@ int main(){
         {}
     };
 
-    moonSentences.push_back("Sols veig la mort si no trobo \n un refugi de la tempesta...");
-    moonSentences.push_back("Segueix-me! no tenim gaire temps!");
-    moonSentences.push_back("Has to be so nice to be loved...");
-    moonSentences.push_back("Veniu amb nosaltres! \n (Tot i que no estic segur de si ho aconseguirem");
-    moonSentences.push_back("Seguim buscant tots junts \n (El grup confia en mi...)");
-    moonSentences.push_back("No et rendeixis! Trobarem algun lloc! \n (O morirem congelats...)");
+    moonSentences.push_back("muec");
+    moonSentences.push_back("mos");
+    moonSentences.push_back("dis");
+    moonSentences.push_back("sure");
+    moonSentences.push_back("idc");
+    moonSentences.push_back("miau");
     moonSentences.push_back("...");
     moonSentences.push_back("...");
     moonSentences.push_back("...");
@@ -127,6 +144,9 @@ int main(){
     window.setFramerateLimit(30);
 
 
+    SnowSystem snowSystem;
+    snowSystem.populate(200, window.getSize().x, window.getSize().y);
+
     sf::Texture endT;
     endT.loadFromFile("res/end.png");
     sf::Sprite endS;
@@ -151,6 +171,7 @@ int main(){
 
         //Deltatime
         deltatime = deltaClock.restart().asSeconds();
+        snowSystem.update(deltatime);
 
 		//Loop for handling events
 		while(window.pollEvent(event)){
@@ -334,20 +355,28 @@ sf::Vector2f groupPosition;
             sf::Vector2f movement = sf::Vector2f(directionX/module*m_speed*deltatime,directionY/module*m_speed*deltatime);
             s.move(movement);
             bool tooCloseToPlayer = false;
-            if(getModule(s.getPosition(),destinationPoint) <
-                    getModule(s.getPosition(), originalPosition)){
+            if(getModule(s.getPosition(),destinationPoint) < s.getGlobalBounds().height){
                 s.move(sf::Vector2f(movement.x*-1,movement.y*-1));
                 tooCloseToPlayer = true;
+                //exit(0);
             }
+
+            sf::Vector2f directionmultiplyer((movement.x > 0)?-1:1,(movement.y > 0)?-1:1);
 
             sf::FloatRect intersectionOfPenguins;
             if(!tooCloseToPlayer){
                 for(Star& ss : penguinsToFollow) {
                     if(&s != &ss && s.getGlobalBounds().intersects(ss.getGlobalBounds(),intersectionOfPenguins)){
+                        std::cout << "col " << intersectionOfPenguins.width << ", " << intersectionOfPenguins.height << std::endl;
+                        bool colXsmaller = intersectionOfPenguins.width > intersectionOfPenguins.height;
+                        directionmultiplyer.x = (s.getPosition().x < ss.getPosition().x)? -1 : 1;
+                        directionmultiplyer.y = (s.getPosition().y < ss.getPosition().y)? -1 : 1;
                         s.move(sf::Vector2f(
-                                   movement.x-(intersectionOfPenguins.width < intersectionOfPenguins.height? intersectionOfPenguins.width:0),
-                                   movement.y-(intersectionOfPenguins.width < intersectionOfPenguins.height? 0: intersectionOfPenguins.height)));
-                    }
+                                   (colXsmaller && intersectionOfPenguins.width > 0)? intersectionOfPenguins.width*directionmultiplyer.x : 0,
+                                   (!colXsmaller && intersectionOfPenguins.height > 0)? intersectionOfPenguins.height*directionmultiplyer.y : 0));
+                        //s.move(sf::Vector2f(movement.x*-1,movement.y*-1));
+                    };
+
                 }
             }
 
@@ -465,6 +494,12 @@ sf::Vector2f groupPosition;
         }
 
         for(Star& s : penguinsToFollow) {
+            sf::RectangleShape bbox (sf::Vector2f(s.getGlobalBounds().width, s.getGlobalBounds().height));
+            bbox.setOutlineColor(sf::Color::Green);
+            bbox.setOutlineThickness(2);
+            bbox.setPosition(s.getPosition());
+            bbox.setOrigin(bbox.getLocalBounds().width/2, bbox.getLocalBounds().height/2);
+            window.draw(bbox);
             s.render(window);
         }
 
@@ -475,6 +510,9 @@ sf::Vector2f groupPosition;
             window.clear(c);
             window.draw(endS);
         }
+
+        window.setView(window.getDefaultView());
+        snowSystem.draw(window);
 
         window.display();
 
